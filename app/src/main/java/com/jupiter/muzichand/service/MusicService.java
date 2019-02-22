@@ -92,7 +92,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         //create player
         mp = new MediaPlayer();
         initMusicPlayer();
-        Log.i(Tag , "service created");
 
     }
 

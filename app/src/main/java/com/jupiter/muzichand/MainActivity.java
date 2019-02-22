@@ -1,9 +1,11 @@
 package com.jupiter.muzichand;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -12,6 +14,7 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -34,17 +37,20 @@ import android.widget.MediaController.MediaPlayerControl;
 import android.widget.TextView;
 
 import com.jupiter.muzichand.service.MusicService;
+import com.jupiter.muzichand.service.SensorService;
 
-public class MainActivity extends AppCompatActivity implements MediaPlayerControl {
+public class MainActivity extends AppCompatActivity implements MediaPlayerControl  {
 
     private static final String Tag = MainActivity.class.getSimpleName();
     private MusicService musicServiceBinder = null;
+    private SensorService sensorServiceBinder = null;
     private SeekBar seekBar;
-    boolean mBound = false;
+    boolean mBound , mBoundSensor = false;
     public TextView currentSong;
     private ListView songView;
     private ArrayList<Song> songList;
     private Intent playIntent;
+    private Intent sensorIntent;
     private MusicController musicController;
     private boolean paused=false, playbackPaused=false;
     public SongAdapter songAdt;
@@ -99,6 +105,13 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
                 startService(playIntent);
             }
 
+           if(sensorIntent==null){
+               startService(new Intent(this, SensorService.class));
+
+            }
+
+
+
             getSongList();
 
             //*******SET ALL SONG ON A LIST
@@ -127,10 +140,13 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
     @Override
     protected void onResume(){
         super.onResume();
+
         if(paused){
             setController();
             paused=false;
         }
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter("my-event"));
     }
 
     @Override
@@ -184,6 +200,7 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
 
         Log.e(Tag, Integer.toString(musicServiceBinder.getPosition()));
     }
+
 
 
 
@@ -294,9 +311,17 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
         }
     };
 
-
-
-
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Extract data included in the Intent
+            String message = intent.getStringExtra("message");
+            if(message != null) {
+                playNext();
+            }
+            Log.e("receiver", "Got message: " + message);
+        }
+    };
 
 
 
@@ -365,6 +390,8 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
             case R.id.action_end:
                 stopService(playIntent);
                 musicServiceBinder=null;
+                stopService(sensorIntent);
+                sensorServiceBinder=null;
                 System.exit(0);
                 break;
         }
@@ -376,6 +403,8 @@ public class MainActivity extends AppCompatActivity implements MediaPlayerContro
     protected void onDestroy() {
         stopService(playIntent);
         musicServiceBinder=null;
+        stopService(sensorIntent);
+        sensorServiceBinder=null;
         super.onDestroy();
     }
 
